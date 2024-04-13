@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using AutoMapper;
+using BCrypt.Net;
 using courses_dotnet_api.Src.DTOs.Account;
 using courses_dotnet_api.Src.Interfaces;
 using courses_dotnet_api.Src.Models;
@@ -46,6 +47,39 @@ public class AccountRepository : IAccountRepository
 
         if (user == null)
         {
+            return null;
+        }
+
+        AccountDto accountDto =
+            new()
+            {
+                Rut = user.Rut,
+                Name = user.Name,
+                Email = user.Email,
+                Token = _tokenService.CreateToken(user.Rut)
+            };
+
+        return accountDto;
+    }
+
+    public async Task<AccountDto?> GetAccountToLoginAsync(string email, string password)
+    {
+        User? user = await _dataContext
+            .Users.Where(u => u.Email == email)
+            .FirstOrDefaultAsync();
+
+        if (user == null)
+        {
+            return null;
+        }
+
+        using var hmac = new HMACSHA512(user.PasswordSalt);
+
+        byte[] EntranceHashPassword = user.PasswordHash;
+
+        byte[] ToComparePassword = hmac.ComputeHash(Encoding.UTF8.GetBytes(password));
+
+        if(!EntranceHashPassword.SequenceEqual(ToComparePassword)){
             return null;
         }
 
